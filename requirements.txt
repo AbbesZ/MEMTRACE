@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+sqlalchemy
+scikit-learn
+numpy
+jinja2

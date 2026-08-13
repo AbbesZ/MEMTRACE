@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEMTRACE - Console Forensique</title>
+    <!-- Chargement de HTMX depuis le CDN comme autorisé pour ce type de projet -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background-color: #f4f7f6; color: #333; }
+        .container { background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        tr:hover { background-color: #f1f1f1; }
+        .score-high { color: #d32f2f; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Console Forensique MEMTRACE</h1>
+        <p>Analyse a posteriori de l'empoisonnement de mémoire (ASI06)</p>
+
+        <!-- Tableau répondant à l'exigence EF-10 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Épisode</th>
+                    <th>Scénario</th>
+                    <th>Label (Vérité terrain)</th>
+                    <th>Score de suspicion</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Boucle Jinja2 pour itérer sur nos données SQLite -->
+                {% for ep in episodes %}
+                <tr>
+                    <td style="font-family: monospace;">{{ ep.id[:8] }}...</td>
+                    <td>{{ ep.scenario }}</td>
+                    <td>{{ ep.label }}</td>
+                    <!-- Mise en évidence visuelle si le score dépasse 0.5 -->
+                    <td class="{% if ep.score and ep.score > 0.5 %}score-high{% endif %}">
+                        {{ "%.3f"|format(ep.score) if ep.score is not none else "Non calculé" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
