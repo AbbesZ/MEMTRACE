@@ -1,5 +1,7 @@
 # MEMTRACE - Console Forensique 🔍
 
+[![CI MEMTRACE](https://github.com/AbbesZ/MEMTRACE/actions/workflows/ci.yml/badge.svg)](https://github.com/AbbesZ/MEMTRACE/actions/workflows/ci.yml)
+
 Ce projet a été réalisé dans le cadre de mon stage de 4ème année d'ingénierie en informatique à CY Tech, au sein de l'Unité Mixte de Recherche (UMR) au Maroc. 
 
 Il s'agit d'une application de détection forensique *post-hoc* (en boîte noire) ciblant les attaques d'empoisonnement de mémoire et de contexte sur les agents IA, une vulnérabilité critique répertoriée sous la référence **OWASP ASI06**.
@@ -9,7 +11,7 @@ Il s'agit d'une application de détection forensique *post-hoc* (en boîte noire
 * **Machine Learning :** Scikit-Learn, Numpy (Régression Logistique)
 * **Base de données :** SQLite, SQLAlchemy
 * **Interface Web :** HTML/CSS, HTMX, Jinja2
-* **Déploiement :** Docker, Docker Compose
+* **Qualité et CI/CD :** Pytest, Flake8, GitHub Actions, Docker
 
 ## 🚀 Démarrage Rapide (Déploiement Conteneurisé)
 
@@ -29,6 +31,22 @@ Ce projet a été conçu pour être déployé en une commande unique sur une mac
 
 (Pour arrêter le serveur, effectuez simplement Ctrl+C dans le terminal).
 
+## 🧪 Tests et Intégration Continue
+Le projet intègre un pipeline CI/CD automatisé garantissant la qualité et la sécurité du code à chaque modification :
+
+- Tests unitaires (pytest) : Validation stricte des invariants, notamment l'étanchéité textuelle (INV-04) empêchant la fuite de données sensibles lors du traitement Pydantic.
+
+
+- Analyse statique (flake8) : Vérification de la conformité du style et de la complexité cyclomatique.
+
+
+- Build Docker : Validation de la conteneurisation en environnement isolé (Ubuntu).
+
+Pour lancer les tests localement :
+```bash
+python -m pytest tests/ -v
+```
+
 ## 📂 Architecture du Projet
 
 - main.py : Cœur de l'application. Contient l'API FastAPI pour l'ingestion des traces JSONL, la vérification stricte des invariants d'horodatage, et les routes web.
@@ -47,3 +65,9 @@ Ce projet a été conçu pour être déployé en une commande unique sur une mac
 
 
 - Dockerfile & docker-compose.yml : Configuration de l'environnement isolé.
+
+
+- tests/ : Suite de tests unitaires et de sécurité.
+
+
+- .github/workflows/ : Configuration de l'intégration continue.
