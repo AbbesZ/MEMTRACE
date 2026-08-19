@@ -70,8 +70,19 @@ class Episode(BaseModel):
 
     @model_validator(mode='after')
     def verifier_invariants(self) -> 'Episode':
+        if self.ts_end < self.ts_start:
+            raise ValueError(f"INV-03 Violé: ts_end {self.ts_end} est inférieur à ts_start {self.ts_start}")
+
         if not self.events:
             return self
+
+        if self.events[0].ts < self.ts_start:
+            raise ValueError(
+                f"INV-02 Violé: premier évènement {self.events[0].ts} est avant ts_start {self.ts_start}")
+        if self.events[-1].ts > self.ts_end:
+            raise ValueError(
+                f"INV-02 Violé: dernier évènement {self.events[-1].ts} est après ts_end {self.ts_end}")
+
         for i in range(len(self.events) - 1):
             evt_courant = self.events[i]
             evt_suivant = self.events[i + 1]

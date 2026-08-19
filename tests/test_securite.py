@@ -2,6 +2,34 @@ import pytest
 from main import Episode
 
 
+def test_invariant_temps_episode_ko():
+    """Une trace avec ts_end avant ts_start doit être rejetée."""
+    episode_invalide = {
+        "id": "episode_temp_001",
+        "agent_id": "agent_test",
+        "scenario": "injection_prompt",
+        "ts_start": 1700000010.0,
+        "ts_end": 1700000000.0,
+        "label": "benign",
+        "attack_family": None,
+        "events": [
+            {
+                "seq": 1,
+                "ts": 1700000009.0,
+                "type": "user_msg",
+                "tool_id": None,
+                "args_hash": "hash_factice",
+                "mem_ids": [],
+                "scores": [],
+                "latency_ms": 15.0
+            }
+        ]
+    }
+
+    with pytest.raises(ValueError, match="ts_start|ts_end"):
+        Episode(**episode_invalide)
+
+
 def test_etancheite_textuelle_enf07():
     """
     Vérification de l'exigence ENF-07 et de l'invariant INV-04 :

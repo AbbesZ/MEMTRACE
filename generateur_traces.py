@@ -11,20 +11,49 @@ def generer_episode(est_empoisonne=False):
 
     events = []
     current_ts = ts_start
+    nb_evenements = 5 if est_empoisonne else 3
 
-    # Génération de 3 événements basiques pour simuler une interaction
-    for seq in range(1, 4):
-        # Le temps avance pour garantir un horodatage monotone (INV-02)
+    for seq in range(1, nb_evenements + 1):
         current_ts += random.uniform(0.1, 2.5)
 
+        event_type = "user_msg"
+        tool_id = None
+        mem_ids = []
+        scores = []
+
+        if est_empoisonne:
+            if seq == 1:
+                event_type = "user_msg"
+            elif seq == 2:
+                event_type = "mem_write"
+                mem_ids = [f"mem_{random.randint(1, 9)}"]
+                scores = [round(random.uniform(0.7, 0.98), 4)]
+            elif seq == 3:
+                event_type = "tool_call"
+                tool_id = "search_db"
+            elif seq == 4:
+                event_type = "tool_result"
+                mem_ids = [f"mem_{random.randint(1, 9)}"]
+                scores = [round(random.uniform(0.6, 0.95), 4)]
+            else:
+                event_type = "final_action"
+        else:
+            if seq == 1:
+                event_type = "user_msg"
+            elif seq == 2:
+                event_type = "tool_call"
+                tool_id = "search_db"
+            else:
+                event_type = "final_action"
+
         event = {
-            "seq": seq,  # Strictement croissant (INV-01)
+            "seq": seq,
             "ts": current_ts,
-            "type": "user_msg" if seq == 1 else ("tool_call" if seq == 2 else "final_action"),
-            "tool_id": "search_db" if seq == 2 else None,
-            "args_hash": str(uuid.uuid4())[:8],  # Empreinte uniquement, pas de texte brut (INV-04)
-            "mem_ids": [],
-            "scores": [],
+            "type": event_type,
+            "tool_id": tool_id,
+            "args_hash": str(uuid.uuid4())[:8],
+            "mem_ids": mem_ids,
+            "scores": scores,
             "latency_ms": random.uniform(50, 300)
         }
         events.append(event)

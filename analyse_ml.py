@@ -1,64 +1,77 @@
 import json
 import numpy as np
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
-from main import EpisodeDB  # On importe notre structure de base de données
+from sklearn.model_selection import train_test_split
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-# --- 1. CONNEXION À LA BASE DE DONNÉES ---
-engine = create_engine("sqlite:///./memtrace.db")
-Session = sessionmaker(bind=engine)
-session = Session()
+from main import EpisodeDB
 
-print("Chargement des données depuis SQLite...")
-episodes = session.query(EpisodeDB).all()
 
-X = []
-y = []
-ids = []
-
-# --- 2. EXTRACTION DES DESCRIPTEURS (Exigence EF-05) ---
-for ep in episodes:
-    events = json.loads(ep.events_json)
-
-    # On extrait des descripteurs basiques pour notre preuve de concept :
-    # F4 : Longueur de l'épisode (nombre d'événements)
+def extraire_features(events, ts_start, ts_end):
     nb_events = len(events)
-    # F5 simplifié : Durée totale de l'interaction
-    duree_totale = ep.ts_end - ep.ts_start
-    # F1 simplifié : Nombre d'appels d'outils
-    nb_tools = sum(1 for e in events if e['type'] == 'tool_call')
+    duree_totale = ts_end - ts_start
+    nb_tools = sum(1 for e in events if e.get('type') == 'tool_call')
+    nb_mem_writes = sum(1 for e in events if e.get('type') == 'mem_write')
+    nb_mem_reads = sum(1 for e in events if e.get('type') == 'mem_read')
+    total_scores = sum(sum(e.get('scores', [])) for e in events)
+    latency_moy = float(np.mean([e.get('latency_ms', 0.0) for e in events])) if events else 0.0
+    return [nb_events, duree_totale, nb_tools, nb_mem_writes, nb_mem_reads, total_scores, latency_moy]
 
-    # Vecteur de caractéristiques (Features)
-    feature_vector = [nb_events, duree_totale, nb_tools]
-    X.append(feature_vector)
 
-    # Cible (Target) : 1 si empoisonné, 0 si bénin
-    y.append(1 if ep.label == "poisoned" else 0)
-    ids.append(ep.id)
+def train_and_score_model():
+    engine = create_engine("sqlite:///./memtrace.db")
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-X = np.array(X)
-y = np.array(y)
+    episodes = session.query(EpisodeDB).all()
+    if not episodes:
+        raise ValueError("Aucun épisode trouvé pour entraîner le modèle.")
 
-# --- 3. ENTRAÎNEMENT DU MODÈLE (Section 9.2) ---
-print("Entraînement du modèle de Régression Logistique imposé...")
-# Le paramètre random_state=42 garantit la reproductibilité absolue (ENF-04)
-modele = LogisticRegression(random_state=42)
-modele.fit(X, y)
+    X = []
+    y = []
+    ids = []
 
-# --- 4. CALCUL DES SCORES ET MÉTRIQUES (Section 9.3) ---
-# On récupère la probabilité d'être empoisonné (colonne 1)
-scores = modele.predict_proba(X)[:, 1]
-auroc = roc_auc_score(y, scores)
-print(f"Modèle entraîné avec succès ! Métrique AUROC obtenue : {auroc:.3f}")
+    for ep in episodes:
+        events = json.loads(ep.events_json)
+        X.append(extraire_features(events, ep.ts_start, ep.ts_end))
+        y.append(1 if ep.label == "poisoned" else 0)
+        ids.append(ep.id)
 
-# --- 5. SAUVEGARDE EN BASE DE DONNÉES (Exigence EF-06) ---
-print("Sauvegarde des scores de suspicion dans la base de données...")
-for ep_id, score in zip(ids, scores):
-    ep = session.query(EpisodeDB).filter(EpisodeDB.id == ep_id).first()
-    ep.score = float(score)
+    X = np.array(X, dtype=float)
+    y = np.array(y, dtype=int)
 
-session.commit()
-session.close()
-print("Terminé ! Les données sont prêtes pour l'interface web.")
+    X_train, X_test, y_train, y_test, ids_train, ids_test = train_test_split(
+        X, y, ids, test_size=0.2, random_state=42, stratify=y
+    )
+
+    modele = LogisticRegression(random_state=42, max_iter=1000)
+    modele.fit(X_train, y_train)
+
+    scores_test = modele.predict_proba(X_test)[:, 1]
+    auroc = roc_auc_score(y_test, scores_test)
+    scores_all = modele.predict_proba(X)[:, 1]
+
+    for ep_id, score in zip(ids, scores_all):
+        ep = session.query(EpisodeDB).filter(EpisodeDB.id == ep_id).first()
+        ep.score = float(score)
+
+    session.commit()
+    session.close()
+
+    return {
+        "nombre_episodes": len(ids),
+        "nombre_train": len(X_train),
+        "nombre_test": len(X_test),
+        "auroc": float(auroc),
+        "score_min": float(np.min(scores_all)),
+        "score_max": float(np.max(scores_all))
+    }
+
+
+if __name__ == "__main__":
+    print("Chargement des données depuis SQLite...")
+    result = train_and_score_model()
+    print("Modèle entraîné avec succès !")
+    print(result)
