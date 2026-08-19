@@ -108,7 +108,6 @@ async def ingest_logs(file: UploadFile = File(...)):
     content = await file.read()
     lignes = content.decode("utf-8").strip().split('\n')
 
-    # Ouvre une session avec la base de données
     db = SessionLocal()
 
     for ligne in lignes:
@@ -118,7 +117,6 @@ async def ingest_logs(file: UploadFile = File(...)):
             donnees = json.loads(ligne)
             episode = Episode(**donnees)
 
-            # Sauvegarde en base de données
             db_episode = EpisodeDB(
                 id=episode.id,
                 agent_id=episode.agent_id,
@@ -127,10 +125,8 @@ async def ingest_logs(file: UploadFile = File(...)):
                 ts_end=episode.ts_end,
                 label=episode.label,
                 attack_family=episode.attack_family,
-                # On convertit les événements en JSON pour les stocker facilement
                 events_json=json.dumps([e.model_dump() for e in episode.events])
             )
-            # Ajoute si l'ID n'existe pas déjà (évite les doublons lors de tests multiples)
             if not db.query(EpisodeDB).filter(EpisodeDB.id == episode.id).first():
                 db.add(db_episode)
                 acceptes += 1
@@ -142,11 +138,41 @@ async def ingest_logs(file: UploadFile = File(...)):
             rejetes += 1
             erreurs.append(str(e))
 
-    # Valide les changements dans la base
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        erreurs.append(f"Erreur de commit SQLite: {exc}")
+        db.close()
+        return {"episodes_acceptes": 0, "episodes_rejetes": rejetes + acceptes, "details_rejets": erreurs[:5]}
+
     db.close()
 
+    if acceptes > 0:
+        try:
+            from analyse_ml import train_and_score_model
+            metrics = train_and_score_model()
+        except Exception as exc:
+            erreurs.append(f"Scoring ML non calculé: {exc}")
+        else:
+            return {
+                "episodes_acceptes": acceptes,
+                "episodes_rejetes": rejetes,
+                "details_rejets": erreurs[:5],
+                "score_metrics": metrics
+            }
+
     return {"episodes_acceptes": acceptes, "episodes_rejetes": rejetes, "details_rejets": erreurs[:5]}
+
+
+@app.post("/retrain", summary="Relance le calcul des scores ML sur les épisodes stockés")
+def retrain_model():
+    try:
+        from analyse_ml import train_and_score_model
+        metrics = train_and_score_model()
+        return {"status": "ok", "metrics": metrics}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Échec du recalcul du score: {exc}")
 
 
 @app.get("/healthz", summary="Sonde de disponibilité")
