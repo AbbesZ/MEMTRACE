@@ -189,6 +189,27 @@ def lister_episodes():
     return {"nombre_trouves": len(episodes), "episodes": episodes}
 
 
+@app.get("/episodes/{episode_id}", response_class=HTMLResponse, summary="Détail d’un épisode")
+async def detail_episode(request: Request, episode_id: str):
+    db = SessionLocal()
+    episode = db.query(EpisodeDB).filter(EpisodeDB.id == episode_id).first()
+    db.close()
+
+    if not episode:
+        raise HTTPException(status_code=404, detail="Épisode introuvable")
+
+    events = json.loads(episode.events_json)
+    return templates.TemplateResponse(
+        request=request,
+        name="episode_detail.html",
+        context={
+            "episode": episode,
+            "events": events,
+            "score": episode.score,
+        }
+    )
+
+
 # --- CONFIGURATION INTERFACE WEB (HTMX + Jinja2) ---
 templates = Jinja2Templates(directory="templates")
 
@@ -197,9 +218,6 @@ templates = Jinja2Templates(directory="templates")
 async def interface_web(request: Request):
     """Génère l'interface HTML avec la liste des épisodes triée par score décroissant."""
     db = SessionLocal()
-
-    # On récupère les épisodes triés par score décroissant (Exigence EF-10)
-    # On limite à 100 pour garder une interface fluide
     episodes = db.query(EpisodeDB).order_by(desc(EpisodeDB.score)).limit(100).all()
     db.close()
 

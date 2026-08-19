@@ -1,5 +1,45 @@
+import json
+
 import pytest
-from main import Episode
+from fastapi.testclient import TestClient
+
+from main import Episode, EpisodeDB, SessionLocal, app
+
+
+def test_detail_episode_route_returns_html():
+    """La route de détail d’un épisode doit exposer les données associées."""
+    db = SessionLocal()
+    episode_id = "episode_detail_001"
+    existing = db.query(EpisodeDB).filter(EpisodeDB.id == episode_id).first()
+    if not existing:
+        db.add(EpisodeDB(
+            id=episode_id,
+            agent_id="agent_test",
+            scenario="detail_test",
+            ts_start=100.0,
+            ts_end=110.0,
+            label="benign",
+            attack_family=None,
+            events_json=json.dumps([{
+                "seq": 1,
+                "ts": 101.0,
+                "type": "user_msg",
+                "tool_id": None,
+                "args_hash": "aaa",
+                "mem_ids": [],
+                "scores": [],
+                "latency_ms": 15.0
+            }]),
+            score=0.42
+        ))
+        db.commit()
+    db.close()
+
+    client = TestClient(app)
+    response = client.get(f"/episodes/{episode_id}")
+
+    assert response.status_code == 200
+    assert "Détail de l'épisode" in response.text
 
 
 def test_invariant_temps_episode_ko():

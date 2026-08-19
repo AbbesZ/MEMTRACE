@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détail de l'épisode | MEMTRACE</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background-color: #f4f7f6; color: #333; }
+        .container { background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 1rem 0 2rem; }
+        .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { border: 1px solid #e0e0e0; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .score-high { color: #d32f2f; font-weight: bold; }
+        code { background: #f1f1f1; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Détail de l'épisode</h1>
+        <div class="meta">
+            <div class="card"><strong>ID :</strong> <code>{{ episode.id }}</code></div>
+            <div class="card"><strong>Agent :</strong> {{ episode.agent_id }}</div>
+            <div class="card"><strong>Scénario :</strong> {{ episode.scenario }}</div>
+            <div class="card"><strong>Label :</strong> {{ episode.label }}</div>
+            <div class="card"><strong>Famille :</strong> {{ episode.attack_family or 'Aucune' }}</div>
+            <div class="card"><strong>Score :</strong> <span class="{% if score is not none and score > 0.5 %}score-high{% endif %}">{{ '%.3f'|format(score) if score is not none else 'Non calculé' }}</span></div>
+            <div class="card"><strong>ts_start :</strong> {{ episode.ts_start }}</div>
+            <div class="card"><strong>ts_end :</strong> {{ episode.ts_end }}</div>
+        </div>
+
+        <h2>Événements</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Seq</th>
+                    <th>Type</th>
+                    <th>Ts</th>
+                    <th>tool_id</th>
+                    <th>mem_ids</th>
+                    <th>scores</th>
+                    <th>latency_ms</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.seq }}</td>
+                    <td>{{ event.type }}</td>
+                    <td>{{ event.ts }}</td>
+                    <td>{{ event.tool_id or '-' }}</td>
+                    <td>{{ event.mem_ids | join(', ') if event.mem_ids else '-' }}</td>
+                    <td>{{ event.scores | join(', ') if event.scores else '-' }}</td>
+                    <td>{{ event.latency_ms }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
