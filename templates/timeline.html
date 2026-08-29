@@ -1,0 +1,41 @@
+<h3>Investigation de l'Épisode</h3>
+
+<div style="margin-bottom: 1.5rem;">
+    <h4>Matérialisation du Découplage Temporel (Descripteur F5)</h4>
+    {% if edges %}
+        <ul style="color: #d32f2f; font-weight: bold; background: #ffebee; padding: 1rem; border-radius: 4px;">
+        {% for edge in edges %}
+            <li>⚠️ Empoisonnement suspecté : L'entrée mémoire <code>{{ edge.mem_id }}</code> a été relue avec un délai de <strong>{{ "%.3f"|format(edge.delay_s) }} secondes</strong> après son écriture initiale.</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p style="color: #2e7d32; background: #e8f5e9; padding: 1rem; border-radius: 4px;">Aucune arête d'écriture/relecture suspecte détectée dans cet épisode.</p>
+    {% endif %}
+</div>
+
+<div style="margin-bottom: 1.5rem; padding: 1rem; background-color: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
+    <h4>Top 3 des Descripteurs Contributifs (EF-13)</h4>
+    <ul style="margin: 0; padding-left: 1.5rem;">
+        {% for desc in top_descripteurs %}
+        <li><strong>{{ desc.nom }}</strong> : Impact sur le score de {{ desc.contribution }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<h4>Frise Temporelle des Événements</h4>
+<ul style="list-style-type: none; padding-left: 0;">
+    {% for evt in events %}
+    <li style="padding: 8px; border-bottom: 1px solid #ccc;">
+        <span style="display: inline-block; width: 60px; font-weight: bold; color: #555;">Seq: {{ evt.seq }}</span>
+        <span style="display: inline-block; width: 120px; font-family: monospace;">{{ evt.type }}</span>
+        <span style="color: #777;">(Horodatage : {{ "%.2f"|format(evt.ts) }})</span>
+
+        <!-- Mise en évidence visuelle des événements mémoire -->
+        {% if evt.type == 'mem_write' %}
+            <span style="margin-left: 10px; color: #1976d2; font-weight: bold;">[Écriture : {{ evt.mem_ids | join(', ') }}]</span>
+        {% elif evt.type == 'mem_read' %}
+            <span style="margin-left: 10px; color: #f57c00; font-weight: bold;">[Relecture : {{ evt.mem_ids | join(', ') }}]</span>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>

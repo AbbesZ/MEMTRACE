@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEMTRACE - Console Forensique</title>
-    <!-- Chargement de HTMX depuis le CDN comme autorisé pour ce type de projet -->
+    <!-- Chargement de HTMX imposé -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 2rem; background-color: #f4f7f6; color: #333; }
@@ -12,8 +12,11 @@
         table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
         th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; }
         th { background-color: #f8f9fa; font-weight: bold; }
-        tr:hover { background-color: #f1f1f1; }
+        /* Ligne cliquable via HTMX */
+        tr.clickable:hover { background-color: #e9ecef; cursor: pointer; }
         .score-high { color: #d32f2f; font-weight: bold; }
+        /* Style pour la frise temporelle */
+        #detail-boite { margin-top: 2rem; padding: 1.5rem; background-color: #fafafa; border-left: 4px solid #007bff; }
     </style>
 </head>
 <body>
@@ -21,24 +24,60 @@
         <h1>Console Forensique MEMTRACE</h1>
         <p>Analyse a posteriori de l'empoisonnement de mémoire (ASI06)</p>
 
-        <!-- Tableau répondant à l'exigence EF-10 -->
+        <!-- Formulaire de filtrage (EF-07 et EF-10) -->
+        <form hx-get="/ui" hx-target="body" hx-push-url="true" style="margin-bottom: 2rem; padding: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 4px;">
+            <div style="display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap;">
+                <div>
+                    <!-- Curseur pour le seuil de décision (EF-07) -->
+                    <label style="font-weight: bold;">Seuil de suspicion : <span id="score-val">{{ min_score }}</span></label><br>
+                    <input type="range" name="min_score" min="0" max="1" step="0.01" value="{{ min_score }}" oninput="document.getElementById('score-val').innerText = this.value">
+                </div>
+                <div>
+                    <label>Scénario :</label><br>
+                    <input type="text" name="scenario" value="{{ scenario }}" placeholder="Ex: recherche...">
+                </div>
+                <div>
+                    <label>Agent :</label><br>
+                    <input type="text" name="agent_id" value="{{ agent_id }}" placeholder="Ex: agent_alpha">
+                </div>
+                <div>
+                    <label>Label :</label><br>
+                    <select name="label">
+                        <option value="">Tous</option>
+                        <option value="benign" {% if label == 'benign' %}selected{% endif %}>Benign</option>
+                        <option value="poisoned" {% if label == 'poisoned' %}selected{% endif %}>Poisoned</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" style="padding: 8px 16px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer;">Filtrer</button>
+                </div>
+            </div>
+        </form>
+
+                <!-- C'est ici que HTMX injectera la frise temporelle (EF-11 et EF-12) -->
+        <div id="detail-boite">
+            <p><em>Cliquez sur un épisode dans le tableau pour afficher sa frise temporelle et analyser le découplage mémoire...</em></p>
+        </div>
+
         <table>
             <thead>
                 <tr>
                     <th>ID Épisode</th>
                     <th>Scénario</th>
-                    <th>Label (Vérité terrain)</th>
+                    <th>Label</th>
                     <th>Score de suspicion</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- Boucle Jinja2 pour itérer sur nos données SQLite -->
                 {% for ep in episodes %}
-                <tr>
+                <!-- Ajout des attributs HTMX pour charger le détail au clic -->
+                <tr class="clickable"
+                    hx-get="/ui/episodes/{{ ep.id }}/timeline"
+                    hx-target="#detail-boite"
+                    hx-swap="innerHTML">
                     <td style="font-family: monospace;">{{ ep.id[:8] }}...</td>
                     <td>{{ ep.scenario }}</td>
                     <td>{{ ep.label }}</td>
-                    <!-- Mise en évidence visuelle si le score dépasse 0.5 -->
                     <td class="{% if ep.score and ep.score > 0.5 %}score-high{% endif %}">
                         {{ "%.3f"|format(ep.score) if ep.score is not none else "Non calculé" }}
                     </td>

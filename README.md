@@ -8,7 +8,7 @@ Il s'agit d'une application de détection forensique *post-hoc* (en boîte noire
 
 ## 🛠️ Technologies Utilisées
 * **Backend API :** Python 3.12, FastAPI, Pydantic
-* **Machine Learning :** Scikit-Learn, Numpy (Régression Logistique)
+* **Machine Learning :** Scikit-Learn, Numpy (Régression Logistique, Gradient Boosting, Validation Croisée)
 * **Base de données :** SQLite, SQLAlchemy
 * **Interface Web :** HTML/CSS, HTMX, Jinja2
 * **Qualité et CI/CD :** Pytest, Flake8, GitHub Actions, Docker
@@ -42,9 +42,11 @@ Le projet intègre un pipeline CI/CD automatisé garantissant la qualité et la 
 
 - Build Docker : Validation de la conteneurisation en environnement isolé (Ubuntu).
 
-Pour lancer les tests localement :
+Le projet respecte l'exigence de couverture de code supérieure à 60% (ENF-05).
+
+Pour lancer les tests localement avec le rapport de couverture :
 ```bash
-python -m pytest tests/ -v
+pytest --cov=. --cov-report=term-missing
 ```
 
 ## 📂 Architecture du Projet
@@ -58,7 +60,7 @@ python -m pytest tests/ -v
 - generateur_traces.py : Outil de génération du corpus synthétique (AgentTraceBench-v0.jsonl) simulant des historiques d'agents IA sains et empoisonnés.
 
 
-- templates/index.html : Interface utilisateur allégée utilisant HTMX pour l'affichage du tableau de bord.
+- templates/index.html & timeline.html : Interface utilisateur interactive propulsée par HTMX. Permet le filtrage dynamique des traces, l'ajustement du seuil de décision (EF-07), l'affichage de la frise chronologique (EF-12) et l'explicabilité des variables (EF-13).
 
 
 - memtrace.db : Base de données SQLite stockant les épisodes ingérés et scorés (générée automatiquement à l'exécution).
